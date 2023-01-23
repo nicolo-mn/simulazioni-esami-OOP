@@ -38,7 +38,7 @@ public class Test {
 	
 	@org.junit.Before
 	public void initFactory() {
-		// this.factory= new TreeFactoryImpl();
+		this.factory= new TreeFactoryImpl();
 	}
 	
 	/**
