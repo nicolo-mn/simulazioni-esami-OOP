@@ -48,7 +48,7 @@ public class Test {
 
 	@org.junit.Before
 	public void initFactory() {
-		// this.factory = new TableFactoryImpl();
+		this.factory = new TableFactoryImpl();
 	}
 
 	// lab e project: una enum usata in alcuni test

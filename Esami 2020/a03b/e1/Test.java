@@ -51,7 +51,7 @@ public class Test {
 
 	@org.junit.Before
 	public void initFactory() {
-		// this.factory = new EquivalenceFactoryImpl();
+		this.factory = new EquivalenceFactoryImpl();
 	}
 	
 	@org.junit.Test
