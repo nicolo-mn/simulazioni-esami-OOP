@@ -9,10 +9,12 @@ public class GUI extends JFrame {
     
     private static final long serialVersionUID = -6218820567019985015L;
     private final Map<JButton,Pair<Integer,Integer>> cells = new HashMap<>();
+    private final Logics logics;
     
     public GUI(int size) {
         this.setDefaultCloseOperation(EXIT_ON_CLOSE);
         this.setSize(100*size, 100*size);
+        this.logics = new LogicsImpl(size);
         
         JPanel grid = new JPanel(new GridLayout(size,size));
         this.getContentPane().add(BorderLayout.CENTER,grid);
@@ -20,9 +22,11 @@ public class GUI extends JFrame {
         ActionListener el = e -> {
         	var button = (JButton)e.getSource();
         	var position = this.cells.get(button);
-        	button.setText(position.getX()+":"+position.getY());
-        	button.setEnabled(false);
-        	
+        	this.logics.hit(position.getX(), position.getY());
+            if (this.logics.isOver()) {
+                System.exit(0);
+            }
+            this.updateCells();
         };
                 
         for (int i=0; i<size; i++){
@@ -33,11 +37,29 @@ public class GUI extends JFrame {
                 jb.addActionListener(el);
             }
         }
-        var random = new Random();
-    	var randomPosition = new Pair<>(random.nextInt(size),random.nextInt(size));
-    	cells.forEach( (button,position) -> { if (position.equals(randomPosition)) {button.setText("*");}});
+        this.updateCells();
+        // var random = new Random();
+    	// var randomPosition = new Pair<>(random.nextInt(size),random.nextInt(size));
+    	// cells.forEach( (button,position) -> { if (position.equals(randomPosition)) {button.setText("*");}});
     	
         this.setVisible(true);
+    }
+
+    void updateCells() {
+        for (var entry : this.cells.entrySet()) {
+            final var pos = entry.getValue();
+            final var jb = entry.getKey();
+            if (this.logics.isRook(pos.getX(), pos.getY())) {
+                jb.setText("R");
+            }
+            else if (this.logics.isPawn(pos.getX(), pos.getY())) {
+                jb.setText("*");
+            }
+            else {
+                jb.setText(" ");
+            }
+            jb.setEnabled(this.logics.isSelected(pos.getX(), pos.getY()) ? true : false);
+        }
     }
     
 }
