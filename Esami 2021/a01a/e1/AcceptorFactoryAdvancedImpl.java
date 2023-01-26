@@ -1,53 +1,51 @@
 package a01a.e1;
 
+import java.util.ArrayList;
 import java.util.Optional;
 import java.util.function.BiFunction;
 import java.util.function.Function;
-
-import javax.xml.stream.StreamFilter;
+import java.util.stream.Collectors;
 
 public class AcceptorFactoryAdvancedImpl implements AcceptorFactory{
+
+    @Override
+    public Acceptor<String, Integer> countEmptyStringsOnAnySequence() {
+        return generalised(0, (e,s) -> Optional.of(e.isEmpty() ? s+1 : s), r -> Optional.of(r));
+    }
+
+    @Override
+    public Acceptor<Integer, String> showAsStringOnlyOnIncreasingSequences() {
+        return generalised(new ArrayList<Integer>(), (e,s) -> {
+            if (s.isEmpty() || s.get(s.size() - 1 ) < e) {
+                s.add(e);
+                return Optional.of(s);
+            }
+            return Optional.empty();
+        }, r -> Optional.of(r.stream().map(e -> String.valueOf(e)).collect(Collectors.joining(":"))));
+    }
+
+    @Override
+    public Acceptor<Integer, Integer> sumElementsOnlyInTriples() {
+        return generalised(new ArrayList<Integer>(), (e,s) -> Optional.of(s).filter(a -> a.add(e)).filter(g -> g.size() <= 3),
+                           r -> Optional.of(r).filter(b -> b.size() == 3).map(c -> c.stream().reduce(0, (i,j) -> i+j)));
+    }
 
     @Override
     public <E, O1, O2> Acceptor<E, Pair<O1, O2>> acceptBoth(Acceptor<E, O1> a1, Acceptor<E, O2> a2) {
         return new Acceptor<E,Pair<O1,O2>>() {
 
-            Acceptor<E,O1> acc1 = a1;
-            Acceptor<E,O2> acc2 = a2;
             @Override
             public boolean accept(E e) {
-                return acc1.accept(e) && acc2.accept(e);
+                return a1.accept(e) && a2.accept(e);
             }
 
             @Override
             public Optional<Pair<O1, O2>> end() {
-                Optional<O1> opt1 = acc1.end();
-                Optional<O2> opt2 = acc2.end();
-                if (opt1.isPresent() && opt2.isPresent()) {
-                    return Optional.of(new Pair(opt1.get(), opt2.get()));
-                }
-
-                return Optional.empty();
-            }
-            
-        };
-    }
-
-    @Override
-    public Acceptor<String, Integer> countEmptyStringsOnAnySequence() {
-        return new Acceptor<String,Integer>() {
-            private int nullStr = 0;
-            @Override
-            public boolean accept(String e) {
-                if (e.length() == 0) {
-                    ++nullStr;
-                }
-                return true;
-            }
-
-            @Override
-            public Optional<Integer> end() {
-                return Optional.of(nullStr);
+                Optional<O1> a1res = a1.end();
+                Optional<O2> a2res = a2.end();
+                return a1res.isPresent() && a2res.isPresent() 
+                       ? Optional.of(new Pair<>(a1.end().get(), a2.end().get()))
+                       : Optional.empty();
             }
             
         };
@@ -57,84 +55,21 @@ public class AcceptorFactoryAdvancedImpl implements AcceptorFactory{
     public <E, O, S> Acceptor<E, O> generalised(S initial, BiFunction<E, S, Optional<S>> stateFun,
             Function<S, Optional<O>> outputFun) {
         return new Acceptor<E,O>() {
-            
-            private Optional<S> state = Optional.ofNullable(initial);
+
+            private Optional<S> currState = Optional.of(initial);
+
             @Override
             public boolean accept(E e) {
-                if (state.isPresent()) {
-                    Optional<S> tmp = stateFun.apply(e, state.get());
-                    if (tmp.isPresent()) {
-                        state = tmp;
-                    }
-                    return tmp.isPresent();
-                }
-                return false;
+                this.currState = this.currState.flatMap(s-> stateFun.apply(e, s));
+                return this.currState.isPresent();
             }
 
             @Override
             public Optional<O> end() {
-                return outputFun.apply(state.get());
+                return this.currState.isEmpty() ? Optional.empty() : outputFun.apply(this.currState.get());
             }
             
         };
     }
-
-    @Override
-    public Acceptor<Integer, String> showAsStringOnlyOnIncreasingSequences() {
-        return new Acceptor<Integer,String>() {
-            private boolean stillValid = true;
-            private boolean isFirst = true;
-            private String res = "";
-            private int last;
-            @Override
-            public boolean accept(Integer e) {
-                if (isFirst) {
-                    isFirst = false;
-                    last = e;
-                    res = Integer.toString(e);
-                    return true;
-                }
-                else if (e > last && stillValid) {
-                    last = e;
-                    res = res + ":" + Integer.toString(e);
-                    return true;
-                }
-                else {
-                    if (stillValid) {
-                        stillValid = false;
-                    }
-                    return false;
-                }
-            }
-
-            @Override
-            public Optional<String> end() {
-                return stillValid ? Optional.of(res) : Optional.empty();
-            }
-            
-        };
-    }
-
-    @Override
-    public Acceptor<Integer, Integer> sumElementsOnlyInTriples() {
-        return new Acceptor<Integer,Integer>() {
-            private int sum = 0;
-            private int nElems = 0;
-            @Override
-            public boolean accept(Integer e) {
-                ++nElems;
-                if (nElems <= 3) {
-                    sum += e;
-                    return true;
-                }
-                return false;
-            }
-
-            @Override
-            public Optional<Integer> end() {
-                return nElems == 3 ? Optional.of(sum) : Optional.empty();
-            }
-            
-        };
-    }
+    
 }
